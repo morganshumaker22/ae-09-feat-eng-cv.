@@ -2,6 +2,8 @@
 title: "The Office"
 author: "Mine Çetinkaya-Rundel"
 output: github_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r load-packages, message = FALSE}
@@ -41,19 +43,64 @@ theoffice %>%
 ### Exercise 1 - Calculate the percentage of lines spoken by Jim, Pam, Michael, and Dwight for each episode of The Office.
 
 ```{r lines}
-
+officelines <- theoffice %>% 
+  group_by(season, episode) %>% 
+  mutate(n_lines = n(), 
+         lines_jim = sum(character == "Jim")/n_lines,
+         lines_pam = sum(character == "Pam")/n_lines,
+         lines_michael = sum(character == "Michael")/n_lines,
+         lines_dwight = sum(character == "Dwight")/n_lines) %>% 
+  ungroup() %>% 
+  select(season, episode, episode_name, contains("lines")) %>% 
+  distinct(season, episode, episode_name, .keep_all = TRUE) %>% 
+  print()
 ```
 
 ### Exercise 2 - Identify episodes that touch on Halloween, Valentine's Day, and Christmas.
 
 ```{r special-episodes}
+theoffice <- theoffice %>% 
+  mutate(text = tolower(text))
 
+halloween_episodes <- theoffice %>% 
+  filter(str_detect(text, "halloween")) %>% 
+  count(episode_name) %>% 
+  filter(n > 1) %>% 
+  mutate(halloween = 1) %>% 
+  select(-n)
+```
+
+```{r}
+valentine_episodes <- theoffice %>% 
+  filter(str_detect(text, "valentine")) %>% 
+  count(episode_name) %>% 
+  filter(n > 1) %>% 
+  mutate(valentine = 1) %>% 
+  select(-n)
+```
+
+```{r}
+xmas_episodes <- theoffice %>% 
+  filter(str_detect(text, "christmas")) %>% 
+  count(episode_name) %>% 
+  filter(n > 1) %>% 
+  mutate(christmas = 1) %>% 
+  select(-n)
 ```
 
 ### Exercise 3 - Put together a modeling dataset that includes features you've engineered. Also add an indicator variable called `michael` which takes the value `1` if Michael Scott (Steve Carrell) was there, and `0` if not. Note: Michael Scott (Steve Carrell) left the show at the end of Season 7.
 
 ```{r office-df}
-
+office_df <- theoffice %>% 
+  select(season, episode, episode_name, imdb_rating, total_votes, air_date) %>% 
+  distinct(season, episode, .keep_all = TRUE) %>% 
+  left_join(halloween_episodes, by = "episode_name") %>% 
+  left_join(valentine_episodes, by = "episode_name") %>% 
+  left_join(xmas_episodes, by = "episode_name") %>% 
+  replace_na(list(halloween = 0, valentine = 0, christmas = 0)) %>% 
+  mutate(michael = if_else(season > 7, 0, 1)) %>% 
+  mutate(across(halloween:michael, as.factor)) %>% 
+  left_join(officelines, by = c("season", "episode", "episode_name"))
 ```
 
 ### Exercise 4 - Split the data into training (75%) and testing (25%).
@@ -61,18 +108,28 @@ theoffice %>%
 ```{r split}
 set.seed(1122)
 
+office_split <- initial_split(office_df)
+office_train <- training(office_split)
+office_test <- testing(office_split)
+
 ```
 
 ### Exercise 5 - Specify a linear regression model.
 
 ```{r model}
-
+office_mod <- linear_reg() %>% 
+  set_engine("lm")
 ```
 
 ### Exercise 6 - Create a recipe that updates the role of `episode_name` to not be a predictor, removes `air_date` as a predictor, uses `season` as a factor, and removes all zero variance predictors.
 
 ```{r recipe}
-
+office_rec <- recipe(imdb_rating ~ ., data = office_train) %>% 
+  update_role(episode_name, new_role = "id") %>% 
+  step_rm(air_date) %>% 
+  step_dummy(all_nominal(), -episode_name) %>% 
+  step_zv(all_predictors())
+  
 ```
 
 ### Exercise 7 - Build a workflow for fitting the model specified earlier and using the recipe you developed to preprocess the data.
