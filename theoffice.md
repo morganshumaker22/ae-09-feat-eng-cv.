@@ -180,6 +180,12 @@ office_rec <- recipe(imdb_rating ~ ., data = office_train) %>%
 
 ### Exercise 7 - Build a workflow for fitting the model specified earlier and using the recipe you developed to preprocess the data.
 
+``` r
+office_wflow <- workflow() %>% 
+  add_model(office_mod) %>% 
+  add_recipe(office_rec) 
+```
+
 ### Exercise 8 - Fit the model to training data and interpret a couple of the slope coefficients.
 
 ### Exercise 9 - Perform 5-fold cross validation and view model performance metrics.
