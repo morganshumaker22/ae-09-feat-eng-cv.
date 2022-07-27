@@ -176,7 +176,7 @@ rmse(office_test_pred, truth = imdb_rating, estimate = .pred)
 
 #### Old model
 
-```{r old-model, error = TRUE}
+```{r old-model, error = FALSE}
 office_mod_old <- linear_reg() %>%
   set_engine("lm")
 
@@ -198,5 +198,9 @@ office_fit_old <- office_wflow_old %>%
 
 tidy(office_fit_old)
 
-___
+office_test_pred_old <- predict(office_fit_old, new_data = office_test) %>% 
+  bind_cols(office_test %>% select(imdb_rating, episode_name))
+
+rmse(office_test_pred_old, truth = imdb_rating, estimate = .pred)
+
 ```
